@@ -22,6 +22,7 @@ from mainapp.views import (
 from mainapp.api import hobbies_api, profile_api, users_api, sent_friend_request_api, received_friend_request_api, friend_api
 
 urlpatterns = [
+    path('', profile_view, name='profile'),
     path('signup/', signup_view, name='signup'),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),

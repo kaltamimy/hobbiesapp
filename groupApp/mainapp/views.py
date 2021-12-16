@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 from .forms import  LoginUserForm, CreateUserForm
-
 
 def signup_view(request):
     if request.user.is_authenticated:
@@ -36,15 +36,19 @@ def login_view(request):
 
         return render(request, 'mainapp/login.html', {'form': LoginUserForm()})
 
+@login_required(login_url='login')
 def logout_view(request):
     logout(request)
     return redirect('login')
 
+@login_required(login_url='login')
 def profile_view(request):
 	return render(request, "mainapp/profile.html")
 
+@login_required(login_url='login')
 def edit_profile_view(request):
     return render(request, 'mainapp/edit_profile.html')
 
+@login_required(login_url='login')
 def users_list_view(request):
     return render(request, "mainapp/users_list.html")
