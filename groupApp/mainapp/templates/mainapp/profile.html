@@ -1,0 +1,269 @@
+{% extends "mainapp/layout.html" %} {% load static %} {% block content %}
+<div id="app">
+  <div class="main-content">
+    <div class="container mt-7">
+      <br />
+      {% csrf_token %}
+      <div class="row">
+        <div class="col-xl-8 m-auto order-xl-2 mb-5 mb-xl-0">
+          <div class="card card-profile shadow">
+            <div class="row justify-content-center">
+              <div class="col-lg-6 order-lg-2">
+                <div class="card-profile-image">
+                  <img
+                    v-bind:src="profile.image"
+                    class="rounded-circle"
+                    width="350"
+                    height="300"
+                  />
+                </div>
+              </div>
+            </div>
+            <div
+              class="card-header text-center border-0 pt-8 pt-md-4 pb-0 pb-md-4"
+            ></div>
+            <div class="card-body pt-0 pt-md-4">
+              <div class="text-center">
+                <h3>[[profile.username]]</h3>
+                <br />
+                <dl class="row">
+                  <dt class="col-sm-4">Email</dt>
+                  <dd class="col-sm-5">[[profile.email]]</dd>
+                  <dt class="col-sm-4">Date of Birth</dt>
+                  <dd class="col-sm-5">[[profile.dob]]</dd>
+                  <dt class="col-sm-4">City</dt>
+                  <dd class="col-sm-5">[[profile.city]]</dd>
+                  <dt class="col-sm-4">Hobbies</dt>
+                  <dd class="col-sm-5">
+                    <ul class="list-group" v-for="hobby in hobbies">
+                      <li class="list-group-item">[[hobby]]</li>
+                    </ul>
+                  </dd>
+                  <dt class="col-sm-4">Friends</dt>
+                  <dd class="col-sm-5">
+                    <ul class="list-group" v-for="friend in friends">
+                      <li class="list-group-item">
+                        [[friend]]
+                        <small class="float-right">
+                          <button
+                            class="btn btn-danger"
+                            @click="deleteFriend(friend)"
+                          >
+                            Delete
+                          </button>
+                        </small>
+                      </li>
+                    </ul>
+                  </dd>
+                </dl>
+
+                <hr class="my-2" />
+                <a
+                  class="btn btn-block btn-info"
+                  href="{% url 'edit_profile' %}"
+                  >Edit Profile</a
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <br />
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card card-signin my-5">
+            <div class="card-body">
+              <h2>Friend Requests Sent ([[sent.length]])</h2>
+              <hr class="my-2" />
+              <div v-if="sent.length == 0">
+                <h5><i>No sent requests!</i></h5>
+              </div>
+              <div v-else>
+                <div v-for="user in sent">
+                  <img
+                    v-bind:src="user.image"
+                    class="rounded mr-2"
+                    width="40"
+                    height="40"
+                    alt=""
+                  /><b>[[user.username]]</b>
+                  <small class="float-right">
+                    <button
+                      @click.prevent="cancelRequest(user)"
+                      class="btn btn-warning mr-2"
+                    >
+                      Cancel
+                    </button>
+                  </small>
+                </div>
+              </div>
+              <br /><br />
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card card-signin my-5">
+            <div class="card-body">
+              <h2>Friend Requests Received ([[received.length]])</h2>
+              <hr class="my-2" />
+              <div v-if="received.length == 0">
+                <h5><i>No received requests!</i></h5>
+              </div>
+              <div v-else>
+                <div v-for="user in received">
+                  <img
+                    v-bind:src="user.image"
+                    class="rounded mr-2"
+                    width="40"
+                    height="40"
+                    alt=""
+                  /><b>[[user.username]]</b>
+                  <small class="float-right">
+                    <button
+                      class="btn btn-success mr-2"
+                      @click="acceptRequest(user)"
+                    >
+                      Accept
+                    </button>
+                    <button class="btn btn-danger" @click="rejectRequest(user)">
+                      Reject
+                    </button>
+                  </small>
+                </div>
+              </div>
+              <br /><br />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %} {% block scripts %}
+<script>
+  let myApp = Vue.createApp({
+    delimiters: ['[[', ']]'],
+    data() {
+      return {
+        profile: '',
+        hobbies: [],
+        friends: [],
+        sent: [],
+        received: [],
+      };
+    },
+    async created() {
+      let response = await fetch("{% url 'profile api' %}", { method: 'GET' });
+      if (response.ok) {
+        let data = await response.json();
+        this.profile = data.profile;
+        this.sent = data.sent;
+        this.received = data.received;
+        this.hobbies = data.profile.hobbies;
+        this.friends = data.profile.friends;
+        this.hobbies = this.hobbies.map((x) => x[1]);
+        this.friends = this.friends.map((x) => x[4]);
+      } else {
+        alert('Failed to load profile');
+      }
+    },
+    methods: {
+      async acceptRequest(user) {
+        {
+          let response = await fetch("{% url 'received request api' %}", {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken')
+                .value,
+            },
+            body: JSON.stringify({
+              user: user,
+            }),
+          });
+          if (response.ok) {
+            let data = await response.json();
+            this.received = data.received;
+            this.profile = data.profile;
+            this.hobbies = data.profile.hobbies;
+            this.friends = data.profile.friends;
+            this.hobbies = this.hobbies.map((x) => x[1]);
+            this.friends = this.friends.map((x) => x[4]);
+          } else {
+            alert('Failed to update users');
+          }
+        }
+      },
+      async rejectRequest(user) {
+        {
+          let response = await fetch("{% url 'received request api' %}", {
+            method: 'DELETE',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken')
+                .value,
+            },
+            body: JSON.stringify({
+              user: user,
+            }),
+          });
+          if (response.ok) {
+            let data = await response.json();
+            this.received = data.received;
+          } else {
+            alert('Failed to update users');
+          }
+        }
+      },
+      async cancelRequest(user) {
+        {
+          let response = await fetch("{% url 'sent request api' %}", {
+            method: 'DELETE',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken')
+                .value,
+            },
+            body: JSON.stringify({
+              user: user,
+            }),
+          });
+          if (response.ok) {
+            let data = await response.json();
+            this.sent = data.sent;
+            this.sent.forEach((element) => {
+              element.hobbies = element.hobbies.map((x) => x[1]);
+            });
+          } else {
+            alert('Failed to update users');
+          }
+        }
+      },
+      async deleteFriend(friend) {
+        {
+          let response = await fetch("{% url 'friend api' %}", {
+            method: 'DELETE',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken')
+                .value,
+            },
+            body: JSON.stringify({
+              friend: friend,
+            }),
+          });
+          if (response.ok) {
+            let data = await response.json();
+            this.profile = data.profile;
+            this.hobbies = data.profile.hobbies;
+            this.friends = data.profile.friends;
+            this.hobbies = this.hobbies.map((x) => x[1]);
+            this.friends = this.friends.map((x) => x[4]);
+          } else {
+            alert('Failed to update users');
+          }
+        }
+      },
+    },
+  });
+
+  myApp.mount('#app');
+</script>
+{% endblock %}

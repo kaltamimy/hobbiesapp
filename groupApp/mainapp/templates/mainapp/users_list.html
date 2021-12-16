@@ -1,0 +1,307 @@
+{% extends "mainapp/layout.html" %} {% load static %} {% block content %}
+<div id="app">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-8">
+        <div v-if="users.length > 0">
+          <form class="row g-6">
+            {% csrf_token %}
+            <div class="col-sm-3">
+              <br />
+              <label for="city" class="form-label">City:</label>
+              <input type="text" class="form-control" v-model="city" />
+            </div>
+            <div class="col-sm-3">
+              <br />
+              <label for="min_age" class="form-label">Minimum Age:</label>
+              <input type="number" class="form-control" v-model="min_age" />
+            </div>
+            <div class="col-sm-3">
+              <br />
+              <label for="max_age" class="form-label">Maximum Age:</label>
+              <input type="number" class="form-control" v-model="max_age" />
+            </div>
+            <div class="col-sm-3">
+              <br />
+              <label class="text-light">Apply Filter:</label>
+              <button
+                type="submit"
+                @click.prevent="filterUsers()"
+                class="btn btn-block btn-primary"
+              >
+                Filter
+              </button>
+            </div>
+
+            <br />
+          </form>
+
+          <div class="card card-signin my-5" v-for="user in users">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-sm-3">
+                  <img
+                    v-bind:src="[[ user.image ]]"
+                    class="rounded mr-2"
+                    width="150"
+                    height="200"
+                    alt=""
+                  />
+                  <div class="text-center"><h3>[[ user.username ]]</h3></div>
+                  <div v-if="(friends.some(e => e == user.username))">
+                    <small class="float-right">
+                      <button
+                        @click.prevent="deleteFriend(user.username)"
+                        class="btn btn-danger mr-2"
+                      >
+                        Delete Friend
+                      </button>
+                    </small>
+                  </div>
+                  <div
+                    v-else-if="!(sent.some(e => e.username == user.username))"
+                  >
+                    <small class="float-right">
+                      <button
+                        @click.prevent="sendRequest(user)"
+                        class="btn btn-primary mr-2"
+                      >
+                        Add Friend
+                      </button>
+                    </small>
+                  </div>
+                  <div v-else>
+                    <small class="float-right">
+                      <button
+                        @click.prevent="cancelRequest(user)"
+                        class="btn btn-warning mr-2"
+                      >
+                        Cancel Request
+                      </button>
+                    </small>
+                  </div>
+                </div>
+                <div class="col-sm-9">
+                  <dl class="row">
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-5 text-center">[[user.email]]</dd>
+                    <dt class="col-sm-4">Date of Birth</dt>
+                    <dd class="col-sm-5 text-center">[[user.dob]]</dd>
+                    <dt class="col-sm-4">City</dt>
+                    <dd class="col-sm-5 text-center">[[user.city]]</dd>
+                    <dt class="col-sm-4">Hobbies</dt>
+                    <dd class="col-sm-5 text-center">
+                      <ul class="list-group" v-for="hobby in user.hobbies">
+                        <li class="list-group-item">[[hobby]]</li>
+                      </ul>
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-else>
+          <form class="row g-6">
+            {% csrf_token %}
+            <div class="col-sm-3">
+              <br />
+              <label for="city" class="form-label">City:</label>
+              <input type="text" class="form-control" v-model="city" />
+            </div>
+            <div class="col-sm-3">
+              <br />
+              <label for="min_age" class="form-label">Minimum Age:</label>
+              <input type="number" class="form-control" v-model="min_age" />
+            </div>
+            <div class="col-sm-3">
+              <br />
+              <label for="max_age" class="form-label">Maximum Age:</label>
+              <input type="number" class="form-control" v-model="max_age" />
+            </div>
+            <div class="col-sm-3">
+              <br />
+              <label class="text-light">Apply Filter:</label>
+              <button
+                type="submit"
+                @click.prevent="filterUsers()"
+                class="btn btn-block btn-primary"
+              >
+                Filter
+              </button>
+            </div>
+
+            <br />
+          </form>
+          <h5>
+            <i
+              >No users found! Please change your filters or try again later.</i
+            >
+          </h5>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card card-signin my-5">
+          <div class="card-body text-center">
+            <img
+              v-bind:src="curr_user.image"
+              class="rounded-circle"
+              width="200"
+              height="150"
+            />
+            <h5 class="card-title text-center">[[ curr_user.username ]]</h5>
+            <h6 class="text-center">
+              <p class="text-muted">Friends</p>
+              <ul v-for="friend in friends" class="list-unstyled">
+                <li>[[ friend ]]</li>
+              </ul>
+            </h6>
+            <ul class="list-group" v-for="hobby in curr_user.hobbies">
+              <li class="list-group-item text-center">[[hobby]]</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %} {% block scripts %}
+<script>
+  let myApp = Vue.createApp({
+    delimiters: ['[[', ']]'],
+    data() {
+      return {
+        users: [],
+        sent: [],
+        curr_user: '',
+        friends: '',
+        city: '',
+        min_age: '',
+        max_age: '',
+      };
+    },
+    async created() {
+      let response = await fetch("{% url 'users api' %}", { method: 'GET' });
+      if (response.ok) {
+        let data = await response.json();
+        this.users = data.users;
+        this.sent = data.sent;
+        this.users.forEach((element) => {
+          element.hobbies = element.hobbies.map((x) => x[1]);
+        });
+        this.sent.forEach((element) => {
+          element.hobbies = element.hobbies.map((x) => x[1]);
+        });
+      } else {
+        alert('Failed to load list of users');
+      }
+      let response1 = await fetch("{% url 'profile api' %}", { method: 'GET' });
+      if (response1.ok) {
+        let data1 = await response1.json();
+        this.curr_user = data1.profile;
+        this.curr_user.hobbies = this.curr_user.hobbies.map((x) => x[1]);
+        this.friends = this.curr_user.friends.map((x) => x[4]);
+      } else {
+        alert('Failed to load current user');
+      }
+    },
+    methods: {
+      async filterUsers() {
+        {
+          let response = await fetch("{% url 'users api' %}", {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken')
+                .value,
+            },
+            body: JSON.stringify({
+              city: this.city,
+              min_age: this.min_age,
+              max_age: this.max_age,
+              users: this.users,
+            }),
+          });
+          if (response.ok) {
+            let data = await response.json();
+            this.users = data.users;
+          } else {
+            alert('Failed to update users');
+          }
+        }
+      },
+      async sendRequest(user) {
+        {
+          let response = await fetch("{% url 'sent request api' %}", {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken')
+                .value,
+            },
+            body: JSON.stringify({
+              user: user,
+            }),
+          });
+          if (response.ok) {
+            let data = await response.json();
+            this.sent = data.sent;
+            this.sent.forEach((element) => {
+              element.hobbies = element.hobbies.map((x) => x[1]);
+            });
+          } else {
+            alert('Failed to update users');
+          }
+        }
+      },
+      async cancelRequest(user) {
+        {
+          let response = await fetch("{% url 'sent request api' %}", {
+            method: 'DELETE',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken')
+                .value,
+            },
+            body: JSON.stringify({
+              user: user,
+            }),
+          });
+          if (response.ok) {
+            let data = await response.json();
+            this.sent = data.sent;
+            this.sent.forEach((element) => {
+              element.hobbies = element.hobbies.map((x) => x[1]);
+            });
+          } else {
+            alert('Failed to update users');
+          }
+        }
+      },
+      async deleteFriend(friend) {
+        {
+          let response = await fetch("{% url 'friend api' %}", {
+            method: 'DELETE',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken')
+                .value,
+            },
+            body: JSON.stringify({
+              friend: friend,
+            }),
+          });
+          if (response.ok) {
+            let data = await response.json();
+            this.curr_user = data.profile;
+            this.curr_user.hobbies = this.curr_user.hobbies.map((x) => x[1]);
+            this.friends = this.curr_user.friends.map((x) => x[4]);
+          } else {
+            alert('Failed to update users');
+          }
+        }
+      },
+    },
+  });
+
+  myApp.mount('#app');
+</script>
+{% endblock %}
